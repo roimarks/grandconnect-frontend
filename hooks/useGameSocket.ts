@@ -116,6 +116,8 @@ interface UseGameSocketReturn {
   storyHighlight: (storyId: string, page: number, sentenceIndex: number | null) => void;
   returnToLobby: () => void;
   returnToLobbyTrigger: number;
+  navSyncTrigger: { screen: string; gameType?: string; storyId?: string } | null;
+  sendNavSync: (screen: string, gameType?: string, storyId?: string) => void;
 }
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
@@ -133,6 +135,7 @@ export function useGameSocket(): UseGameSocketReturn {
   const [typingIndicator, setTypingIndicator] = useState(false);
   const [storyState, setStoryState] = useState<StoryState | null>(null);
   const [returnToLobbyTrigger, setReturnToLobbyTrigger] = useState(0);
+  const [navSyncTrigger, setNavSyncTrigger] = useState<{ screen: string; gameType?: string; storyId?: string } | null>(null);
 
   const wsRef = useRef<WebSocket | null>(null);
   const resetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -241,6 +244,10 @@ export function useGameSocket(): UseGameSocketReturn {
           setGameType(null);
           setReturnToLobbyTrigger((t) => t + 1);
           break;
+
+        case "nav_sync":
+          setNavSyncTrigger({ screen: msg.screen, gameType: msg.game_type, storyId: msg.story_id });
+          break;
       }
     };
 
@@ -282,5 +289,7 @@ export function useGameSocket(): UseGameSocketReturn {
       send({ type: "story_highlight", story_id: storyId, page, sentence_index: sentenceIndex }),
     returnToLobby: () => send({ type: "return_to_lobby" }),
     returnToLobbyTrigger,
+    navSyncTrigger,
+    sendNavSync: (screen: string, gameType?: string, storyId?: string) => send({ type: "nav_sync", screen, game_type: gameType, story_id: storyId }),
   };
 }

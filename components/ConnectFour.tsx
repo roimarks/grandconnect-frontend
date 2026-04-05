@@ -95,10 +95,14 @@ export default function ConnectFour({ gameState, playerId, onDrop }: Props) {
           <div key={rowIdx} className="grid grid-cols-7 gap-2 mb-2">
             {row.map((cell, colIdx) => {
               const winning = isWinningCell(rowIdx, colIdx);
+              const canClick = isMyTurn && !isColFull(colIdx) && !game_over;
               return (
                 <div
                   key={colIdx}
+                  onClick={() => { if (canClick) onDrop(colIdx); }}
                   className={`w-14 h-14 rounded-full transition-all duration-300 ${
+                    canClick ? "cursor-pointer" : "cursor-default"
+                  } ${
                     winning ? "ring-4 ring-white ring-offset-1 ring-offset-blue-700 animate-pulse" : ""
                   } ${
                     cell === 0

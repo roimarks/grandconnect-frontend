@@ -12,6 +12,26 @@ const ICE_SERVERS = {
   iceServers: [
     { urls: "stun:stun.l.google.com:19302" },
     { urls: "stun:stun1.l.google.com:19302" },
+    { urls: "stun:stun2.l.google.com:19302" },
+    { urls: "stun:stun3.l.google.com:19302" },
+    { urls: "stun:stun4.l.google.com:19302" },
+    { urls: "stun:stun.cloudflare.com:3478" },
+    { urls: "stun:stun.relay.metered.ca:80" },
+    {
+      urls: "turn:global.relay.metered.ca:80",
+      username: "grandconnect",
+      credential: "grandconnect2024",
+    },
+    {
+      urls: "turn:global.relay.metered.ca:443",
+      username: "grandconnect",
+      credential: "grandconnect2024",
+    },
+    {
+      urls: "turns:global.relay.metered.ca:443",
+      username: "grandconnect",
+      credential: "grandconnect2024",
+    },
   ],
 };
 
@@ -74,15 +94,32 @@ export default function VideoCall({ playerId, peerConnected, sendSignal, incomin
     } catch { /* AudioContext not available */ }
   }, []);
 
+  // Get local media early (as soon as component mounts)
+  useEffect(() => {
+    (async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        localStreamRef.current = stream;
+        if (localVideoRef.current) localVideoRef.current.srcObject = stream;
+        setMicPerm("granted"); setCamPerm("granted");
+        startAnalyser(stream);
+      } catch {
+        setShowPermHelp(true);
+      }
+    })();
+  }, [startAnalyser]);
+
   // ── WebRTC ─────────────────────────────────────────────────────────────────
   const setupPC = useCallback(async (): Promise<RTCPeerConnection | null> => {
     if (pcRef.current) return pcRef.current;
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-      localStreamRef.current = stream;
-      if (localVideoRef.current) localVideoRef.current.srcObject = stream;
+      const stream = localStreamRef.current || await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      if (!localStreamRef.current) {
+        localStreamRef.current = stream;
+        if (localVideoRef.current) localVideoRef.current.srcObject = stream;
+        startAnalyser(stream);
+      }
       setMicPerm("granted"); setCamPerm("granted"); setShowPermHelp(false);
-      startAnalyser(stream);
       const pc = new RTCPeerConnection(ICE_SERVERS);
       pcRef.current = pc;
       stream.getTracks().forEach((t) => pc.addTrack(t, stream));
@@ -269,6 +306,16 @@ export default function VideoCall({ playerId, peerConnected, sendSignal, incomin
           <div className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${status === "connected" ? "text-green-400" : "text-yellow-400"}`}>
             {statusBadge}
           </div>
+
+          {/* Retry button on error */}
+          {status === "error" && (
+            <button
+              onClick={() => { pcRef.current = null; hostStarted.current = false; setStatus("connecting"); setupPC(); }}
+              className="px-3 py-1 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold rounded-full transition active:scale-95"
+            >
+              🔄 נסה שוב
+            </button>
+          )}
         </div>
 
         {/* Local video */}

@@ -54,6 +54,7 @@ export default function Home() {
     restartGame, sendSignal, sendChat, sendTyping,
     openStory, storyTurnPage, storyHighlight,
     returnToLobby, returnToLobbyTrigger,
+    sendNavSync, navSyncTrigger,
   } = useGameSocket();
 
   const [screen,        setScreen]        = useState<Screen>("home");
@@ -61,6 +62,9 @@ export default function Home() {
   const [joining,       setJoining]       = useState(false);
   const [activeStory,   setActiveStory]   = useState<Story | null>(null);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
+  const [adminMode,     setAdminMode]     = useState(false);
+
+  const effectivePlayerCount = adminMode ? 2 : playerCount;
 
   const inRoom = screen !== "home";
 
@@ -71,13 +75,14 @@ export default function Home() {
     joinRoom(joinCode.trim().toUpperCase());
     setScreen("salon");
   };
-  const goToSalon         = () => returnToLobby();
+  const goToSalon         = () => { returnToLobby(); sendNavSync("salon"); };
   const handleSelectStory = (story: Story) => {
     openStory(story.id);
     setActiveStory(story);
     setScreen("story_reading");
+    sendNavSync("story_reading", undefined, story.id);
   };
-  const handleCloseStory  = () => { setActiveStory(null); setScreen("salon"); };
+  const handleCloseStory  = () => { setActiveStory(null); setScreen("salon"); sendNavSync("salon"); };
 
   // Exit: only from salon, with confirmation
   const handleExitApp = () => setShowExitConfirm(true);
@@ -103,6 +108,21 @@ export default function Home() {
     if (returnToLobbyTrigger > 0) setScreen("salon");
   }, [returnToLobbyTrigger]);
 
+  // Sync nav from host to guest
+  useEffect(() => {
+    if (!navSyncTrigger || playerId === 0) return;
+    const { screen: targetScreen, storyId: sid } = navSyncTrigger;
+    if (targetScreen === "salon") {
+      setScreen("salon");
+    } else if (targetScreen === "game") {
+      setScreen("game");
+    } else if (targetScreen === "story_reading" && sid) {
+      const story = getStoryById(sid);
+      if (story) { setActiveStory(story); setScreen("story_reading"); }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [navSyncTrigger]);
+
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <>
@@ -110,7 +130,7 @@ export default function Home() {
       {inRoom && playerId !== null && (
         <VideoCall
           playerId={playerId}
-          peerConnected={playerCount >= 2}
+          peerConnected={effectivePlayerCount >= 2}
           sendSignal={sendSignal}
           incomingSignal={incomingSignal}
         />
@@ -234,6 +254,13 @@ export default function Home() {
                 >
                   🚪 הצטרף לחדר
                 </button>
+                <button
+                  onClick={() => { createRoom(); setAdminMode(true); setScreen("salon"); }}
+                  disabled={!connected}
+                  className="w-full py-2 text-purple-400 hover:text-purple-200 text-sm font-medium transition mt-2 underline"
+                >
+                  🔧 מצב פיתוח (יחיד)
+                </button>
               </div>
             ) : (
               <div className="flex flex-col gap-3">
@@ -266,7 +293,7 @@ export default function Home() {
       {screen === "salon" && (
         <main
           className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-100 flex flex-col items-center justify-center p-6 text-center"
-          style={{ paddingTop: VIDEO_BAR_H + 24 }}
+          style={{ paddingTop: VIDEO_BAR_H + 24, paddingLeft: 288 }}
         >
           {/* Exit button — only here */}
           <button
@@ -276,6 +303,12 @@ export default function Home() {
           >
             👋 יציאה
           </button>
+
+          {adminMode && (
+            <div className="fixed top-[168px] left-4 z-40 bg-orange-500 text-white text-xs font-bold px-3 py-1 rounded-full">
+              🔧 מצב פיתוח
+            </div>
+          )}
 
           <div className="text-6xl mb-4">{playerId === 0 ? "🏠" : "🚪"}</div>
           <h2 className="text-3xl font-bold text-purple-700 mb-2">
@@ -291,7 +324,7 @@ export default function Home() {
           <div className="flex gap-4 mb-8">
             {[
               { emoji: "👴", active: true },
-              { emoji: "🧒", active: playerCount >= 2 },
+              { emoji: "🧒", active: effectivePlayerCount >= 2 },
             ].map((p, i) => (
               <div
                 key={i}
@@ -310,15 +343,15 @@ export default function Home() {
                 {GAMES.map((g) => (
                   <div key={g.id} className="relative flex-1 min-w-[120px]">
                     <button
-                      onClick={() => { startGame(g.id); setScreen("game"); }}
-                      disabled={playerCount < 2}
+                      onClick={() => { startGame(g.id); setScreen("game"); sendNavSync("game", g.id); }}
+                      disabled={effectivePlayerCount < 2}
                       className="w-full py-4 px-3 rounded-2xl text-center font-bold transition border-4 bg-white text-gray-600 border-gray-200 hover:border-purple-300 hover:bg-purple-50 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
                     >
                       <div className="text-2xl">{g.label.split(" ")[0]}</div>
                       <div className="text-sm mt-1">{g.label.split(" ").slice(1).join(" ")}</div>
                       <div className="text-xs text-gray-400 mt-0.5">{g.desc}</div>
                     </button>
-                    {playerCount < 2 && (
+                    {effectivePlayerCount < 2 && (
                       <div className="absolute -bottom-6 left-0 right-0 text-center text-xs text-gray-400 pointer-events-none hidden group-hover:block">
                         ממתין לחיבור שני המשתמשים...
                       </div>
@@ -326,7 +359,7 @@ export default function Home() {
                   </div>
                 ))}
               </div>
-              {playerCount < 2 && (
+              {effectivePlayerCount < 2 && (
                 <p className="text-gray-400 text-xs text-center mb-2">ממתין לחיבור שני המשתמשים...</p>
               )}
 
@@ -342,12 +375,12 @@ export default function Home() {
                 <p className="text-amber-600 text-sm mb-3">בחר סיפור לקרוא יחד עם הנכד/ה — עם וידאו!</p>
                 <button
                   onClick={() => setScreen("story_library")}
-                  disabled={playerCount < 2}
+                  disabled={effectivePlayerCount < 2}
                   className="w-full py-3 bg-amber-500 hover:bg-amber-600 active:scale-95 disabled:opacity-40 text-white text-lg font-bold rounded-2xl shadow-lg transition"
                 >
                   📚 בחר סיפור
                 </button>
-                {playerCount < 2 && <p className="text-amber-400 text-xs mt-2">ממתין לחיבור שני המשתמשים...</p>}
+                {effectivePlayerCount < 2 && <p className="text-amber-400 text-xs mt-2">ממתין לחיבור שני המשתמשים...</p>}
               </div>
             </div>
           )}
@@ -362,7 +395,7 @@ export default function Home() {
           STORY LIBRARY
       ══════════════════════════════════════════════════════════════════════ */}
       {screen === "story_library" && (
-        <main className="min-h-screen bg-gradient-to-br from-amber-50 to-purple-100" style={{ paddingTop: VIDEO_BAR_H }}>
+        <main className="min-h-screen bg-gradient-to-br from-amber-50 to-purple-100" style={{ paddingTop: VIDEO_BAR_H, paddingLeft: 288 }}>
           <StoryLibrary
             onSelectStory={handleSelectStory}
             onClose={() => setScreen("salon")}
@@ -374,7 +407,7 @@ export default function Home() {
           STORY READING
       ══════════════════════════════════════════════════════════════════════ */}
       {screen === "story_reading" && activeStory && playerId !== null && (
-        <main className="min-h-screen bg-gradient-to-b from-amber-50 to-white">
+        <main className="min-h-screen bg-gradient-to-b from-amber-50 to-white" style={{ paddingLeft: 288 }}>
           <StoryReader
             story={activeStory}
             storyState={storyState}
@@ -391,7 +424,7 @@ export default function Home() {
       {screen === "game" && gameState && playerId !== null && (
         <main
           className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-100 flex flex-col items-center p-6 pb-16"
-          style={{ paddingTop: VIDEO_BAR_H + 12 }}
+          style={{ paddingTop: VIDEO_BAR_H + 12, paddingLeft: 288 }}
         >
           {/* Header */}
           <div className="flex items-center justify-between w-full max-w-2xl mb-6">
