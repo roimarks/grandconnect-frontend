@@ -312,10 +312,14 @@ export default function Home() {
       ══════════════════════════════════════════════════════════════════════ */}
       {screen === "salon" && (
         <main
-          className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-100 flex flex-col items-center justify-center p-6 text-center"
-          style={{ paddingTop: VIDEO_BAR_H + 24, paddingLeft: 288 }}
+          className="min-h-screen flex flex-col p-6 overflow-y-auto"
+          style={{
+            background: "linear-gradient(160deg, #f5f0ff 0%, #ede9fe 50%, #faf5ff 100%)",
+            paddingTop: VIDEO_BAR_H + 24,
+            paddingLeft: 308,
+          }}
         >
-          {/* Exit button — only here */}
+          {/* Exit button */}
           <button
             onClick={handleExitApp}
             className="fixed top-[168px] right-4 z-40 flex items-center gap-1.5 px-3 py-1.5 bg-white/80 backdrop-blur-sm text-red-500 hover:bg-red-50 font-bold rounded-xl shadow text-sm border border-red-100 transition"
@@ -330,146 +334,216 @@ export default function Home() {
             </div>
           )}
 
-          <div className="text-6xl mb-4">{playerId === 0 ? "🏠" : "🚪"}</div>
-          <h2 className="text-3xl font-bold text-purple-700 mb-2">
-            {playerId === 0 ? "הסלון שלך מוכן!" : "ברוך הבא לסלון!"}
-          </h2>
-
-          <div className="my-6 bg-white rounded-3xl shadow-lg px-10 py-6 border-4 border-purple-200">
-            <p className="text-gray-400 text-sm mb-2">קוד הסלון לשיתוף</p>
-            <div className="text-6xl font-extrabold tracking-widest text-purple-700">{roomCode}</div>
-            {playerId === 0 && <p className="text-gray-400 text-sm mt-2">שלח את הקוד הזה לנכד / נכדה 📲</p>}
-          </div>
-
-          <div className="flex gap-4 mb-8">
-            {[
-              { emoji: "👴", active: true },
-              { emoji: "🧒", active: effectivePlayerCount >= 2 },
-            ].map((p, i) => (
+          {/* ── Room banner ── */}
+          <div
+            className="rounded-3xl px-8 py-6 mb-6 flex items-center justify-between text-white"
+            style={{
+              background: "linear-gradient(135deg, #4c1d95, #7c3aed)",
+              boxShadow: "0 8px 32px rgba(124,58,237,0.4)",
+            }}
+          >
+            <div>
+              <p className="text-sm font-semibold mb-1" style={{ color: "#c4b5fd" }}>קוד הסלון לשיתוף</p>
               <div
-                key={i}
-                className={`flex items-center gap-2 px-5 py-3 rounded-full shadow text-lg font-semibold ${p.active ? "bg-white text-green-600" : "bg-gray-100 text-gray-400"}`}
+                className="text-5xl font-black tracking-widest"
+                style={{
+                  background: "linear-gradient(135deg, #fde68a, #ffffff)",
+                  WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
+                }}
               >
-                <span className="text-2xl">{p.emoji}</span>
-                {p.active ? "✅ מחובר" : "⏳ ממתין..."}
+                {roomCode}
               </div>
-            ))}
+              {playerId === 0 && (
+                <p className="text-xs mt-1" style={{ color: "#c4b5fd" }}>📲 שלח את הקוד לנכד/ה</p>
+              )}
+            </div>
+            <div className="flex gap-3">
+              {[
+                { emoji: "👴", label: playerId === 0 ? "אתה" : "מארח", active: true },
+                { emoji: "🧒", label: playerId !== 0 ? "אתה" : "נכד/ה", active: effectivePlayerCount >= 2 },
+              ].map((p, i) => (
+                <div
+                  key={i}
+                  className="text-center rounded-2xl px-4 py-3"
+                  style={{ background: "rgba(255,255,255,0.15)", border: "2px solid rgba(255,255,255,0.2)", minWidth: 100 }}
+                >
+                  <div className="text-3xl">{p.emoji}</div>
+                  <div className="text-xs font-bold mt-1" style={{ color: "#e9d5ff" }}>{p.label}</div>
+                  <div className="text-xs font-semibold mt-0.5">
+                    {p.active
+                      ? <span style={{ color: "#4ade80" }}>✅ מחובר</span>
+                      : <span style={{ color: "#fbbf24" }}>⏳ ממתין...</span>
+                    }
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
 
+          {/* ── Host UI ── */}
           {playerId === 0 && (
-            <div className="mb-6 w-full max-w-2xl">
-              <p className="text-gray-500 text-sm mb-3 font-medium">🎮 בחר משחק:</p>
+            <div className="w-full">
+              <p className="text-purple-700 font-bold text-sm mb-3">🎮 בחר משחק:</p>
 
-              {/* Memory game with expandable config */}
-              <div className="mb-3">
+              {/* Game cards — 4 colorful tiles */}
+              <div className="grid grid-cols-4 gap-4 mb-3">
+                {/* Memory — togglable config */}
                 <button
                   onClick={() => setMemoryConfig(v => !v)}
                   disabled={effectivePlayerCount < 2}
-                  className={`w-full py-4 px-3 rounded-2xl text-center font-bold transition border-4 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 ${memoryConfig ? "bg-purple-50 border-purple-400 text-purple-700" : "bg-white text-gray-600 border-gray-200 hover:border-purple-300 hover:bg-purple-50"}`}
+                  className={`rounded-2xl p-5 text-center transition active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${memoryConfig ? "scale-[1.03] ring-4 ring-white/70" : "hover:-translate-y-1"}`}
+                  style={{
+                    background: "linear-gradient(135deg, #7c3aed, #4c1d95)",
+                    boxShadow: "0 6px 24px rgba(124,58,237,0.45)",
+                  }}
                 >
-                  <div className="text-2xl">🃏</div>
-                  <div className="text-sm mt-1">זיכרון</div>
-                  <div className="text-xs text-gray-400 mt-0.5">מצא את הזוגות</div>
+                  <div className="text-4xl mb-2">🃏</div>
+                  <div className="text-base font-black text-white">זיכרון</div>
+                  <div className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.7)" }}>מצא את הזוגות</div>
                 </button>
 
-                {memoryConfig && effectivePlayerCount >= 2 && (
-                  <div className="mt-2 bg-purple-50 border-2 border-purple-200 rounded-2xl p-4 text-right" dir="rtl">
-                    {/* Pairs */}
-                    <p className="text-xs font-bold text-purple-600 mb-2">מספר קלפים:</p>
-                    <div className="flex gap-2 mb-3">
-                      {[
-                        { pairs: 8,  label: "16 קלפים", desc: "קל" },
-                        { pairs: 16, label: "32 קלפים", desc: "בינוני" },
-                        { pairs: 24, label: "48 קלפים", desc: "מאתגר" },
-                      ].map(opt => (
-                        <button
-                          key={opt.pairs}
-                          onClick={() => setMemPairs(opt.pairs)}
-                          className={`flex-1 py-2 rounded-xl text-sm font-bold border-2 transition ${memPairs === opt.pairs ? "bg-purple-600 text-white border-purple-600" : "bg-white text-gray-600 border-gray-200 hover:border-purple-300"}`}
-                        >
-                          {opt.label}<br/><span className="text-xs font-normal opacity-70">{opt.desc}</span>
-                        </button>
-                      ))}
-                    </div>
+                {/* Connect Four */}
+                <button
+                  onClick={() => { startGame("connect_four"); setScreen("game"); sendNavSync("game", "connect_four"); }}
+                  disabled={effectivePlayerCount < 2}
+                  className="rounded-2xl p-5 text-center transition active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed hover:-translate-y-1"
+                  style={{
+                    background: "linear-gradient(135deg, #1d4ed8, #1e40af)",
+                    boxShadow: "0 6px 24px rgba(37,99,235,0.4)",
+                  }}
+                >
+                  <div className="text-4xl mb-2">🔴</div>
+                  <div className="text-base font-black text-white">ארבע בשורה</div>
+                  <div className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.7)" }}>ארבע ברצף מנצח</div>
+                </button>
 
-                    {/* Theme */}
-                    <p className="text-xs font-bold text-purple-600 mb-2">נושא:</p>
-                    <div className="grid grid-cols-2 gap-2 mb-4">
-                      {[
-                        { id: "emojis",    label: "🎭 אמוג'י",     desc: "סמלים מהנים" },
-                        { id: "animals",   label: "🐾 חיות",        desc: "בעלי חיים" },
-                        { id: "artists",   label: "🎨 אמנים",       desc: "אמנים מפורסמים" },
-                        { id: "inventors", label: "🔬 ממציאים",     desc: "ממציאים ומדענים" },
-                      ].map(t => (
-                        <button
-                          key={t.id}
-                          onClick={() => setMemTheme(t.id)}
-                          className={`py-2 px-3 rounded-xl text-sm font-bold border-2 transition text-right ${memTheme === t.id ? "bg-purple-600 text-white border-purple-600" : "bg-white text-gray-600 border-gray-200 hover:border-purple-300"}`}
-                        >
-                          {t.label}<br/><span className="text-xs font-normal opacity-70">{t.desc}</span>
-                        </button>
-                      ))}
-                    </div>
+                {/* Snakes & Ladders */}
+                <button
+                  onClick={() => { startGame("snakes_and_ladders"); setScreen("game"); sendNavSync("game", "snakes_and_ladders"); }}
+                  disabled={effectivePlayerCount < 2}
+                  className="rounded-2xl p-5 text-center transition active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed hover:-translate-y-1"
+                  style={{
+                    background: "linear-gradient(135deg, #065f46, #047857)",
+                    boxShadow: "0 6px 24px rgba(6,95,70,0.4)",
+                  }}
+                >
+                  <div className="text-4xl mb-2">🐍</div>
+                  <div className="text-base font-black text-white">סולמות ונחשים</div>
+                  <div className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.7)" }}>הגיע ל-100 ראשון</div>
+                </button>
 
-                    <button
-                      onClick={() => {
-                        startGame("memory", { pairs: memPairs, theme: memTheme });
-                        setScreen("game");
-                        sendNavSync("game", "memory");
-                        setMemoryConfig(false);
-                      }}
-                      className="w-full py-3 bg-purple-600 hover:bg-purple-700 active:scale-95 text-white font-black text-lg rounded-xl shadow-lg transition"
-                    >
-                      🃏 התחל משחק!
-                    </button>
-                  </div>
-                )}
+                {/* Checkers */}
+                <button
+                  onClick={() => { startGame("checkers"); setScreen("game"); sendNavSync("game", "checkers"); }}
+                  disabled={effectivePlayerCount < 2}
+                  className="rounded-2xl p-5 text-center transition active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed hover:-translate-y-1"
+                  style={{
+                    background: "linear-gradient(135deg, #b45309, #92400e)",
+                    boxShadow: "0 6px 24px rgba(180,83,9,0.4)",
+                  }}
+                >
+                  <div className="text-4xl mb-2">♟️</div>
+                  <div className="text-base font-black text-white">דמקה</div>
+                  <div className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.7)" }}>משחק אסטרטגיה</div>
+                </button>
               </div>
 
-              {/* Other games */}
-              <div className="flex gap-2 flex-wrap justify-center mb-5">
-                {GAMES.filter(g => g.id !== "memory").map((g) => (
-                  <div key={g.id} className="relative flex-1 min-w-[120px]">
-                    <button
-                      onClick={() => { startGame(g.id); setScreen("game"); sendNavSync("game", g.id); }}
-                      disabled={effectivePlayerCount < 2}
-                      className="w-full py-4 px-3 rounded-2xl text-center font-bold transition border-4 bg-white text-gray-600 border-gray-200 hover:border-purple-300 hover:bg-purple-50 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
-                    >
-                      <div className="text-2xl">{g.label.split(" ")[0]}</div>
-                      <div className="text-sm mt-1">{g.label.split(" ").slice(1).join(" ")}</div>
-                      <div className="text-xs text-gray-400 mt-0.5">{g.desc}</div>
-                    </button>
+              {/* Memory config panel */}
+              {memoryConfig && effectivePlayerCount >= 2 && (
+                <div className="mb-4 bg-white rounded-2xl border-2 border-purple-200 p-4 shadow-lg" dir="rtl">
+                  <p className="text-xs font-bold text-purple-600 mb-2">מספר קלפים:</p>
+                  <div className="flex gap-2 mb-3">
+                    {[
+                      { pairs: 8,  label: "16 קלפים", desc: "קל" },
+                      { pairs: 16, label: "32 קלפים", desc: "בינוני" },
+                      { pairs: 24, label: "48 קלפים", desc: "מאתגר" },
+                    ].map(opt => (
+                      <button
+                        key={opt.pairs}
+                        onClick={() => setMemPairs(opt.pairs)}
+                        className={`flex-1 py-2 rounded-xl text-sm font-bold border-2 transition ${memPairs === opt.pairs ? "bg-purple-600 text-white border-purple-600" : "bg-white text-gray-600 border-gray-200 hover:border-purple-300"}`}
+                      >
+                        {opt.label}<br/><span className="text-xs font-normal opacity-70">{opt.desc}</span>
+                      </button>
+                    ))}
                   </div>
-                ))}
-              </div>
-              {effectivePlayerCount < 2 && (
-                <p className="text-gray-400 text-xs text-center mb-2">ממתין לחיבור שני המשתמשים...</p>
+
+                  <p className="text-xs font-bold text-purple-600 mb-2">נושא:</p>
+                  <div className="grid grid-cols-2 gap-2 mb-4">
+                    {[
+                      { id: "emojis",    label: "🎭 אמוג'י",   desc: "סמלים מהנים" },
+                      { id: "animals",   label: "🐾 חיות",      desc: "בעלי חיים" },
+                      { id: "artists",   label: "🎨 אמנים",     desc: "אמנים מפורסמים" },
+                      { id: "inventors", label: "🔬 ממציאים",   desc: "ממציאים ומדענים" },
+                    ].map(t => (
+                      <button
+                        key={t.id}
+                        onClick={() => setMemTheme(t.id)}
+                        className={`py-2 px-3 rounded-xl text-sm font-bold border-2 transition text-right ${memTheme === t.id ? "bg-purple-600 text-white border-purple-600" : "bg-white text-gray-600 border-gray-200 hover:border-purple-300"}`}
+                      >
+                        {t.label}<br/><span className="text-xs font-normal opacity-70">{t.desc}</span>
+                      </button>
+                    ))}
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      startGame("memory", { pairs: memPairs, theme: memTheme });
+                      setScreen("game");
+                      sendNavSync("game", "memory");
+                      setMemoryConfig(false);
+                    }}
+                    className="w-full py-3 active:scale-95 text-white font-black text-lg rounded-xl shadow-lg transition"
+                    style={{ background: "linear-gradient(135deg, #7c3aed, #6d28d9)" }}
+                  >
+                    🃏 התחל משחק זיכרון!
+                  </button>
+                </div>
               )}
 
-              <div className="flex items-center gap-3 my-4">
-                <div className="flex-1 h-px bg-gray-200" />
-                <span className="text-gray-400 text-sm">או</span>
-                <div className="flex-1 h-px bg-gray-200" />
+              {effectivePlayerCount < 2 && (
+                <p className="text-purple-400 text-xs text-center mb-4">ממתין לחיבור שני המשתמשים...</p>
+              )}
+
+              {/* Divider */}
+              <div className="flex items-center gap-3 my-5">
+                <div className="flex-1 h-px" style={{ background: "#d8b4fe" }} />
+                <span className="text-purple-400 text-sm font-medium">או</span>
+                <div className="flex-1 h-px" style={{ background: "#d8b4fe" }} />
               </div>
 
-              <div className="bg-amber-50 border-2 border-amber-200 rounded-3xl p-4 text-center" dir="rtl">
-                <div className="text-3xl mb-2">📚</div>
-                <p className="text-amber-800 font-bold text-base mb-1">סיפורים משותפים</p>
-                <p className="text-amber-600 text-sm mb-3">בחר סיפור לקרוא יחד עם הנכד/ה — עם וידאו!</p>
-                <button
-                  onClick={() => setScreen("story_library")}
-                  disabled={effectivePlayerCount < 2}
-                  className="w-full py-3 bg-amber-500 hover:bg-amber-600 active:scale-95 disabled:opacity-40 text-white text-lg font-bold rounded-2xl shadow-lg transition"
-                >
-                  📚 בחר סיפור
-                </button>
-                {effectivePlayerCount < 2 && <p className="text-amber-400 text-xs mt-2">ממתין לחיבור שני המשתמשים...</p>}
+              {/* Story section */}
+              <div
+                className="rounded-2xl p-6 border-2 border-amber-200 flex items-center gap-5"
+                style={{ background: "linear-gradient(135deg, #fffbeb, #fef3c7)" }}
+                dir="rtl"
+              >
+                <div className="text-5xl">📚</div>
+                <div className="flex-1">
+                  <p className="text-amber-800 font-black text-lg mb-0.5">סיפורים משותפים</p>
+                  <p className="text-amber-600 text-sm mb-3">בחר סיפור לקרוא יחד עם הנכד/ה — עם וידאו!</p>
+                  <button
+                    onClick={() => setScreen("story_library")}
+                    disabled={effectivePlayerCount < 2}
+                    className="px-8 py-3 active:scale-95 disabled:opacity-40 text-white text-base font-bold rounded-2xl shadow-lg transition"
+                    style={{ background: "linear-gradient(135deg, #f59e0b, #d97706)", boxShadow: "0 4px 16px rgba(245,158,11,0.4)" }}
+                  >
+                    📚 בחר סיפור
+                  </button>
+                  {effectivePlayerCount < 2 && (
+                    <p className="text-amber-400 text-xs mt-2">ממתין לחיבור שני המשתמשים...</p>
+                  )}
+                </div>
               </div>
             </div>
           )}
 
           {playerId !== 0 && (
-            <p className="text-gray-500 text-lg animate-pulse">⏳ ממתין שהמארח יתחיל...</p>
+            <div className="flex flex-col items-center justify-center flex-1 gap-4 mt-8">
+              <div className="text-6xl">🚪</div>
+              <h2 className="text-2xl font-bold text-purple-700">ברוך הבא לסלון!</h2>
+              <p className="text-gray-500 text-lg animate-pulse">⏳ ממתין שהמארח יתחיל...</p>
+            </div>
           )}
         </main>
       )}
@@ -506,22 +580,33 @@ export default function Home() {
       ══════════════════════════════════════════════════════════════════════ */}
       {screen === "game" && gameState && playerId !== null && (
         <main
-          className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-100 flex flex-col items-center p-6 pb-16"
-          style={{ paddingTop: VIDEO_BAR_H + 12, paddingLeft: 288 }}
+          className="min-h-screen flex flex-col items-center p-6 pb-16"
+          style={{
+            background: "linear-gradient(160deg, #f5f0ff 0%, #ede9fe 50%, #faf5ff 100%)",
+            paddingTop: VIDEO_BAR_H + 12,
+            paddingLeft: 308,
+          }}
         >
-          {/* Header */}
-          <div className="flex items-center justify-between w-full max-w-2xl mb-6">
+          {/* Header topbar */}
+          <div
+            className="flex items-center justify-between w-full max-w-3xl mb-5 px-5 py-3 rounded-2xl text-white"
+            style={{
+              background: "linear-gradient(135deg, #4c1d95, #7c3aed)",
+              boxShadow: "0 4px 20px rgba(124,58,237,0.35)",
+            }}
+          >
             <button
               onClick={goToSalon}
-              className="flex items-center gap-1.5 px-4 py-2 bg-white hover:bg-purple-50 text-purple-700 font-bold rounded-2xl shadow transition active:scale-95 border border-purple-100 text-sm"
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl font-bold text-sm transition active:scale-95"
+              style={{ background: "rgba(255,255,255,0.15)", color: "#e9d5ff" }}
             >
-              🏠 הסלון
+              ← הסלון
             </button>
-            <div className="text-xl font-black text-purple-700 tracking-tight" style={{ fontFamily: "Georgia, serif" }}>
+            <div className="text-lg font-black tracking-tight" style={{ fontFamily: "Georgia, serif", color: "#e9d5ff" }}>
               GrandConnect
             </div>
-            <div className="text-sm bg-white px-4 py-2 rounded-full text-gray-500 shadow">
-              חדר: <span className="font-bold tracking-widest text-purple-700">{roomCode}</span>
+            <div className="text-sm px-4 py-1.5 rounded-full font-bold" style={{ background: "rgba(255,255,255,0.15)", color: "#fde68a", letterSpacing: "0.12em" }}>
+              {roomCode}
             </div>
           </div>
 
