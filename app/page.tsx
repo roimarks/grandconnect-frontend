@@ -7,6 +7,7 @@ import SnakesAndLadders from "@/components/SnakesAndLadders";
 import Checkers from "@/components/Checkers";
 import VideoCall from "@/components/VideoCall";
 import Chat from "@/components/Chat";
+import AudioVideoTest from "@/components/AudioVideoTest";
 import StoryLibrary from "@/components/StoryLibrary";
 import StoryReader from "@/components/StoryReader";
 import { getStoryById, type Story } from "@/lib/stories";
@@ -63,6 +64,7 @@ export default function Home() {
   const [activeStory,   setActiveStory]   = useState<Story | null>(null);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [adminMode,     setAdminMode]     = useState(false);
+  const [showAvTest,    setShowAvTest]    = useState(false);
 
   const effectivePlayerCount = adminMode ? 2 : playerCount;
 
@@ -146,6 +148,9 @@ export default function Home() {
           typingIndicator={typingIndicator}
         />
       )}
+
+      {/* ── Audio/Video test modal ── */}
+      {showAvTest && <AudioVideoTest onClose={() => setShowAvTest(false)} />}
 
       {/* ── Exit confirmation modal ── */}
       {showExitConfirm && (
@@ -255,9 +260,16 @@ export default function Home() {
                   🚪 הצטרף לחדר
                 </button>
                 <button
+                  onClick={() => setShowAvTest(true)}
+                  className="w-full py-3 mt-1 rounded-2xl font-bold text-white text-base transition active:scale-95"
+                  style={{ background: "linear-gradient(135deg, #7c3aed, #4f46e5)" }}
+                >
+                  🎬 בדיקת מצלמה ושמע
+                </button>
+                <button
                   onClick={() => { createRoom(); setAdminMode(true); setScreen("salon"); }}
                   disabled={!connected}
-                  className="w-full py-2 text-purple-400 hover:text-purple-200 text-sm font-medium transition mt-2 underline"
+                  className="w-full py-2 text-purple-400 hover:text-purple-200 text-sm font-medium transition mt-1 underline"
                 >
                   🔧 מצב פיתוח (יחיד)
                 </button>
