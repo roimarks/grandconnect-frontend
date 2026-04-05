@@ -7,6 +7,7 @@ export interface CheckersState {
   selected: [number, number] | null;
   valid_moves: [number, number][];
   must_capture: boolean;
+  multi_jump: boolean;
   captured_counts: [number, number];
   game_over: boolean;
   winner: number | null;
@@ -26,7 +27,7 @@ const PIECE_COLORS = [
 ];
 
 export default function Checkers({ gameState, playerId, onSelectPiece, onMovePiece }: Props) {
-  const { board, current_player, selected, valid_moves, captured_counts, game_over, winner } = gameState;
+  const { board, current_player, selected, valid_moves, captured_counts, game_over, winner, multi_jump } = gameState;
   const isMyTurn = current_player === playerId && !game_over;
 
   const isSelected = (r: number, c: number) =>
@@ -64,6 +65,8 @@ export default function Checkers({ gameState, playerId, onSelectPiece, onMovePie
         }`}>
           {game_over
             ? (winner !== null ? `🏆 ${PLAYER_NAMES[winner]} ניצח/ה!` : "🤝 תיקו!")
+            : isMyTurn && multi_jump
+            ? "🔥 רב-קפיצה! חייב להמשיך לקפוץ!"
             : isMyTurn
             ? "✨ התור שלך — בחר כלי!"
             : `⏳ תור ${PLAYER_NAMES[current_player]}...`

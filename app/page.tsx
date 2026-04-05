@@ -236,7 +236,12 @@ export default function Home() {
               ${connected ? "bg-green-900/60 text-green-300 border border-green-700/50" : "bg-red-900/60 text-red-300 border border-red-700/50"}`}
             style={{ animationDelay: "0.25s" }}
           >
-            {connected ? "🟢 מחובר לשרת" : "🔴 מתחבר לשרת..."}
+            {connected ? "🟢 מחובר לשרת" : (
+              <span className="flex items-center gap-2">
+                <span className="inline-block w-2 h-2 rounded-full bg-red-400 animate-ping" />
+                מתחבר לשרת... (מנסה מחדש אוטומטית)
+              </span>
+            )}
           </div>
 
           {error && (

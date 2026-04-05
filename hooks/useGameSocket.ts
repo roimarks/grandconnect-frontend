@@ -54,6 +54,7 @@ export interface CheckersState {
   selected: [number, number] | null;
   valid_moves: [number, number][];
   must_capture: boolean;
+  multi_jump: boolean;
   captured_counts: [number, number];
   game_over: boolean;
   winner: number | null;
@@ -140,9 +141,12 @@ export function useGameSocket(): UseGameSocketReturn {
   const [returnToLobbyTrigger, setReturnToLobbyTrigger] = useState(0);
   const [navSyncTrigger, setNavSyncTrigger] = useState<{ screen: string; gameType?: string; storyId?: string } | null>(null);
 
-  const wsRef = useRef<WebSocket | null>(null);
-  const resetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const wsRef            = useRef<WebSocket | null>(null);
+  const resetTimerRef    = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const typingTimerRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const reconnectRef     = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const reconnectDelay   = useRef(1000);   // starts at 1s, doubles each attempt
+  const unmountedRef     = useRef(false);
 
   const send = useCallback((msg: object) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
@@ -150,116 +154,143 @@ export function useGameSocket(): UseGameSocketReturn {
     }
   }, []);
 
-  useEffect(() => {
+  const connect = useCallback(() => {
+    if (unmountedRef.current) return;
+
     const backendUrl = process.env.NEXT_PUBLIC_BACKEND_WS_URL ||
       (typeof window !== "undefined" ? `ws://${window.location.hostname}:8000/ws` : "ws://localhost:8000/ws");
+
     const socket = new WebSocket(backendUrl);
     wsRef.current = socket;
 
-    socket.onopen = () => setConnected(true);
-    socket.onclose = () => setConnected(false);
+    socket.onopen = () => {
+      setConnected(true);
+      reconnectDelay.current = 1000;   // reset backoff on success
+    };
+
+    socket.onclose = () => {
+      setConnected(false);
+      if (unmountedRef.current) return;
+      // Auto-reconnect with exponential backoff (max 15 s)
+      const delay = Math.min(reconnectDelay.current, 15000);
+      reconnectDelay.current = delay * 2;
+      reconnectRef.current = setTimeout(connect, delay);
+    };
 
     socket.onmessage = (event) => {
-      const msg = JSON.parse(event.data);
+      try {
+        const msg = JSON.parse(event.data);
 
-      switch (msg.type) {
-        case "room_created":
-          setRoomCode(msg.room_code);
-          setPlayerId(msg.player_id);
-          setPlayerCount(1);
-          break;
+        switch (msg.type) {
+          case "ping":
+            // Server keep-alive ping → send pong back
+            socket.send(JSON.stringify({ type: "pong" }));
+            break;
 
-        case "room_joined":
-          setRoomCode(msg.room_code);
-          setPlayerId(msg.player_id);
-          setPlayerCount(2);
-          break;
+          case "room_created":
+            setRoomCode(msg.room_code);
+            setPlayerId(msg.player_id);
+            setPlayerCount(1);
+            break;
 
-        case "player_joined":
-          setPlayerCount(msg.players);
-          break;
+          case "room_joined":
+            setRoomCode(msg.room_code);
+            setPlayerId(msg.player_id);
+            setPlayerCount(2);
+            break;
 
-        case "player_left":
-          setPlayerCount(1);
-          break;
+          case "player_joined":
+            setPlayerCount(msg.players);
+            break;
 
-        case "game_started":
-          setGameType(msg.game_type);
-          setGameState(msg.game_state);
-          break;
+          case "player_left":
+            setPlayerCount(1);
+            break;
 
-        case "game_state": {
-          const gs: GameState = msg.game_state;
-          setGameState(gs);
+          case "game_started":
+            setGameType(msg.game_type);
+            setGameState(msg.game_state);
+            break;
 
-          // Memory game: schedule flip-back for non-matched pair
-          if (gs.type === "memory") {
-            const mem = gs as MemoryGameState;
-            if (mem.flipped_indices.length === 2) {
-              const [i1, i2] = mem.flipped_indices;
-              if (!mem.cards[i1].matched && !mem.cards[i2].matched) {
-                if (resetTimerRef.current) clearTimeout(resetTimerRef.current);
-                resetTimerRef.current = setTimeout(() => {
-                  send({ type: "reset_unmatched" });
-                }, 1200);
+          case "game_state": {
+            const gs: GameState = msg.game_state;
+            setGameState(gs);
+
+            if (gs.type === "memory") {
+              const mem = gs as MemoryGameState;
+              if (mem.flipped_indices.length === 2) {
+                const [i1, i2] = mem.flipped_indices;
+                if (!mem.cards[i1].matched && !mem.cards[i2].matched) {
+                  if (resetTimerRef.current) clearTimeout(resetTimerRef.current);
+                  resetTimerRef.current = setTimeout(() => {
+                    send({ type: "reset_unmatched" });
+                  }, 1200);
+                }
               }
             }
+            break;
           }
-          break;
+
+          case "error":
+            setError(msg.message);
+            setTimeout(() => setError(null), 3000);
+            break;
+
+          case "webrtc_offer":
+          case "webrtc_answer":
+          case "webrtc_ice":
+            setIncomingSignal({ ...msg, _ts: Date.now() });
+            break;
+
+          case "chat_message": {
+            const now = new Date();
+            const time = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`;
+            setChatMessages((prev) => [...prev, { player_id: msg.player_id, text: msg.text, time }]);
+            break;
+          }
+
+          case "typing":
+            setTypingIndicator(true);
+            if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+            typingTimerRef.current = setTimeout(() => setTypingIndicator(false), 2000);
+            break;
+
+          case "story_state":
+            setStoryState({
+              storyId: msg.story_id ?? null,
+              page: msg.page ?? 0,
+              highlight: msg.highlight ?? null,
+            });
+            break;
+
+          case "return_to_lobby":
+            setGameState(null);
+            setGameType(null);
+            setReturnToLobbyTrigger((t) => t + 1);
+            break;
+
+          case "nav_sync":
+            setNavSyncTrigger({ screen: msg.screen, gameType: msg.game_type, storyId: msg.story_id });
+            break;
         }
-
-        case "error":
-          setError(msg.message);
-          setTimeout(() => setError(null), 3000);
-          break;
-
-        // WebRTC signaling — pass to VideoCall component
-        case "webrtc_offer":
-        case "webrtc_answer":
-        case "webrtc_ice":
-          setIncomingSignal({ ...msg, _ts: Date.now() });
-          break;
-
-        case "chat_message": {
-          const now = new Date();
-          const time = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`;
-          setChatMessages((prev) => [...prev, { player_id: msg.player_id, text: msg.text, time }]);
-          break;
-        }
-
-        case "typing": {
-          setTypingIndicator(true);
-          if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
-          typingTimerRef.current = setTimeout(() => setTypingIndicator(false), 2000);
-          break;
-        }
-
-        case "story_state":
-          setStoryState({
-            storyId: msg.story_id ?? null,
-            page: msg.page ?? 0,
-            highlight: msg.highlight ?? null,
-          });
-          break;
-
-        case "return_to_lobby":
-          setGameState(null);
-          setGameType(null);
-          setReturnToLobbyTrigger((t) => t + 1);
-          break;
-
-        case "nav_sync":
-          setNavSyncTrigger({ screen: msg.screen, gameType: msg.game_type, storyId: msg.story_id });
-          break;
+      } catch {
+        // Ignore parse errors
       }
     };
-
-    return () => {
-      socket.close();
-      if (resetTimerRef.current) clearTimeout(resetTimerRef.current);
-      if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
-    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [send]);
+
+  useEffect(() => {
+    unmountedRef.current = false;
+    connect();
+    return () => {
+      unmountedRef.current = true;
+      wsRef.current?.close();
+      if (resetTimerRef.current)  clearTimeout(resetTimerRef.current);
+      if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+      if (reconnectRef.current)   clearTimeout(reconnectRef.current);
+    };
+  }, [connect]);
 
   return {
     connected,
