@@ -6,12 +6,15 @@ import type { ChatMessage } from "@/components/Chat";
 
 export interface CardState {
   emoji: string;
+  name: string;
   flipped: boolean;
   matched: boolean;
 }
 
 export interface MemoryGameState {
   type: "memory";
+  theme: string;
+  pairs: number;
   cards: CardState[];
   current_player: number;
   scores: [number, number];
@@ -100,7 +103,7 @@ interface UseGameSocketReturn {
   storyState: StoryState | null;
   createRoom: () => void;
   joinRoom: (code: string) => void;
-  startGame: (gameType: string) => void;
+  startGame: (gameType: string, options?: { pairs?: number; theme?: string }) => void;
   flipCard: (index: number) => void;
   dropPiece: (col: number) => void;
   rollDice: () => void;
@@ -272,7 +275,8 @@ export function useGameSocket(): UseGameSocketReturn {
     storyState,
     createRoom: () => send({ type: "create_room" }),
     joinRoom: (code: string) => send({ type: "join_room", room_code: code }),
-    startGame: (type: string) => send({ type: "start_game", game_type: type }),
+    startGame: (type: string, options?: { pairs?: number; theme?: string }) =>
+      send({ type: "start_game", game_type: type, ...options }),
     flipCard: (index: number) => send({ type: "flip_card", index }),
     dropPiece: (col: number) => send({ type: "drop_piece", col }),
     rollDice: () => send({ type: "roll_dice" }),

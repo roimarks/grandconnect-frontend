@@ -7,9 +7,18 @@ interface Props {
   onFlip: (index: number) => void;
 }
 
+const THEME_LABELS: Record<string, string> = {
+  emojis:    "🎭 אמוג'י",
+  animals:   "🐾 חיות",
+  artists:   "🎨 אמנים",
+  inventors: "🔬 ממציאים",
+};
+
 export default function MemoryGame({ gameState, playerId, onFlip }: Props) {
-  const { cards, current_player, scores, game_over, winner, flipped_indices } = gameState;
+  const { cards, current_player, scores, game_over, winner, flipped_indices, theme, pairs } = gameState;
   const isMyTurn = current_player === playerId;
+  const hasNames = cards.some(c => c.name);
+  const total    = cards.length;   // 16 / 32 / 48
 
   const waitingForReset =
     flipped_indices.length === 2 &&
@@ -18,12 +27,27 @@ export default function MemoryGame({ gameState, playerId, onFlip }: Props) {
 
   const handleClick = (index: number) => {
     const card = cards[index];
-    if (!isMyTurn || card.flipped || card.matched || waitingForReset) return;
+    if (!isMyTurn || card.flipped || card.matched || waitingForReset || game_over) return;
     onFlip(index);
   };
 
+  // ── Dynamic grid & card sizing ───────────────────────────────────────────
+  const cols      = total <= 16 ? 4 : 8;
+  const cardW     = total <= 16 ? 100 : total <= 32 ? 88 : 78;
+  const cardH     = hasNames
+    ? (total <= 16 ? 110 : total <= 32 ? 98 : 88)
+    : cardW;
+  const emojiSize = total <= 16 ? "2.2rem" : total <= 32 ? "1.8rem" : "1.5rem";
+  const nameSize  = total <= 16 ? "0.65rem" : "0.6rem";
+
   return (
-    <div className="flex flex-col items-center gap-5 w-full">
+    <div className="flex flex-col items-center gap-4 w-full">
+
+      {/* Theme badge */}
+      <div className="text-xs font-semibold text-purple-500 bg-purple-50 px-3 py-1 rounded-full border border-purple-200">
+        {THEME_LABELS[theme] ?? theme} · {pairs} זוגות ({total} קלפים)
+      </div>
+
       {/* Scoreboard */}
       <div className="flex gap-6 text-center">
         {[0, 1].map((pid) => (
@@ -65,7 +89,7 @@ export default function MemoryGame({ gameState, playerId, onFlip }: Props) {
 
       {/* Game Over Banner */}
       {game_over && (
-        <div className="text-center bg-yellow-50 border-4 border-yellow-400 rounded-3xl px-8 py-5 shadow-xl animate-fade-up">
+        <div className="text-center bg-yellow-50 border-4 border-yellow-400 rounded-3xl px-8 py-5 shadow-xl">
           <div className="text-5xl mb-2">🎉</div>
           <div className="text-2xl font-black text-yellow-700">
             {winner === -1
@@ -80,56 +104,57 @@ export default function MemoryGame({ gameState, playerId, onFlip }: Props) {
 
       {/* Card Grid */}
       <div
-        className="grid gap-3"
-        style={{
-          gridTemplateColumns: "repeat(4, 1fr)",
-          perspective: "800px",
-        }}
+        className="grid gap-2"
+        style={{ gridTemplateColumns: `repeat(${cols}, 1fr)`, perspective: "800px" }}
       >
         {cards.map((card, index) => {
-          const isFlipped    = card.flipped || card.matched;
-          const isClickable  = isMyTurn && !card.flipped && !card.matched && !game_over && !waitingForReset;
-          const isPending    = waitingForReset && flipped_indices.includes(index) && !card.matched;
+          const isFlipped   = card.flipped || card.matched;
+          const isClickable = isMyTurn && !card.flipped && !card.matched && !game_over && !waitingForReset;
+          const isPending   = waitingForReset && flipped_indices.includes(index) && !card.matched;
 
           return (
             <button
               key={index}
               onClick={() => handleClick(index)}
               disabled={!isClickable}
+              style={{ width: cardW, height: cardH }}
               className={`
-                w-[72px] h-[72px] rounded-2xl text-3xl font-bold select-none
-                transition-all duration-300 relative
+                rounded-xl font-bold select-none
+                transition-all duration-300 flex flex-col items-center justify-center gap-0.5 overflow-hidden
                 ${card.matched
-                  ? "bg-green-100 border-4 border-green-400 animate-match"
+                  ? "bg-green-100 border-4 border-green-400"
                   : isFlipped
                   ? isPending
                     ? "bg-white border-4 border-orange-400 shadow-orange-200 shadow-md"
-                    : "bg-white border-4 border-blue-300 shadow-sm animate-card-flip-in"
+                    : "bg-white border-4 border-blue-300 shadow-sm"
                   : isClickable
                   ? "bg-gradient-to-br from-blue-500 to-purple-600 hover:from-blue-400 hover:to-purple-500 active:scale-90 cursor-pointer shadow-lg hover:shadow-xl border-4 border-blue-300/50"
                   : "bg-gradient-to-br from-blue-500 to-purple-600 opacity-70 cursor-not-allowed border-4 border-blue-300/30"
                 }
               `}
-              style={{
-                transformStyle: "preserve-3d",
-              }}
             >
-              {isFlipped
-                ? card.matched
-                  ? <span style={{ filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.2))" }}>{card.emoji}</span>
-                  : card.emoji
-                : <span style={{ fontSize: "1.4rem", opacity: 0.9 }}>❓</span>
-              }
+              {isFlipped ? (
+                <>
+                  <span style={{ fontSize: emojiSize, lineHeight: 1 }}>{card.emoji}</span>
+                  {hasNames && card.name && (
+                    <span
+                      className="font-bold text-gray-700 text-center leading-tight px-0.5"
+                      style={{ fontSize: nameSize }}
+                    >
+                      {card.name}
+                    </span>
+                  )}
+                </>
+              ) : (
+                <span style={{ fontSize: emojiSize, opacity: 0.9 }}>❓</span>
+              )}
             </button>
           );
         })}
       </div>
 
-      {/* Dim overlay when not your turn */}
       {!isMyTurn && !game_over && (
-        <div className="text-sm text-gray-400 font-medium">
-          👆 רק היריב יכול לבחור עכשיו
-        </div>
+        <div className="text-sm text-gray-400 font-medium">👆 רק היריב יכול לבחור עכשיו</div>
       )}
     </div>
   );

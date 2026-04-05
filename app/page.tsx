@@ -65,6 +65,9 @@ export default function Home() {
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [adminMode,     setAdminMode]     = useState(false);
   const [showAvTest,    setShowAvTest]    = useState(false);
+  const [memoryConfig,  setMemoryConfig]  = useState(false);
+  const [memPairs,      setMemPairs]      = useState(8);
+  const [memTheme,      setMemTheme]      = useState("emojis");
 
   const effectivePlayerCount = adminMode ? 2 : playerCount;
 
@@ -351,8 +354,76 @@ export default function Home() {
           {playerId === 0 && (
             <div className="mb-6 w-full max-w-2xl">
               <p className="text-gray-500 text-sm mb-3 font-medium">🎮 בחר משחק:</p>
+
+              {/* Memory game with expandable config */}
+              <div className="mb-3">
+                <button
+                  onClick={() => setMemoryConfig(v => !v)}
+                  disabled={effectivePlayerCount < 2}
+                  className={`w-full py-4 px-3 rounded-2xl text-center font-bold transition border-4 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 ${memoryConfig ? "bg-purple-50 border-purple-400 text-purple-700" : "bg-white text-gray-600 border-gray-200 hover:border-purple-300 hover:bg-purple-50"}`}
+                >
+                  <div className="text-2xl">🃏</div>
+                  <div className="text-sm mt-1">זיכרון</div>
+                  <div className="text-xs text-gray-400 mt-0.5">מצא את הזוגות</div>
+                </button>
+
+                {memoryConfig && effectivePlayerCount >= 2 && (
+                  <div className="mt-2 bg-purple-50 border-2 border-purple-200 rounded-2xl p-4 text-right" dir="rtl">
+                    {/* Pairs */}
+                    <p className="text-xs font-bold text-purple-600 mb-2">מספר קלפים:</p>
+                    <div className="flex gap-2 mb-3">
+                      {[
+                        { pairs: 8,  label: "16 קלפים", desc: "קל" },
+                        { pairs: 16, label: "32 קלפים", desc: "בינוני" },
+                        { pairs: 24, label: "48 קלפים", desc: "מאתגר" },
+                      ].map(opt => (
+                        <button
+                          key={opt.pairs}
+                          onClick={() => setMemPairs(opt.pairs)}
+                          className={`flex-1 py-2 rounded-xl text-sm font-bold border-2 transition ${memPairs === opt.pairs ? "bg-purple-600 text-white border-purple-600" : "bg-white text-gray-600 border-gray-200 hover:border-purple-300"}`}
+                        >
+                          {opt.label}<br/><span className="text-xs font-normal opacity-70">{opt.desc}</span>
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Theme */}
+                    <p className="text-xs font-bold text-purple-600 mb-2">נושא:</p>
+                    <div className="grid grid-cols-2 gap-2 mb-4">
+                      {[
+                        { id: "emojis",    label: "🎭 אמוג'י",     desc: "סמלים מהנים" },
+                        { id: "animals",   label: "🐾 חיות",        desc: "בעלי חיים" },
+                        { id: "artists",   label: "🎨 אמנים",       desc: "אמנים מפורסמים" },
+                        { id: "inventors", label: "🔬 ממציאים",     desc: "ממציאים ומדענים" },
+                      ].map(t => (
+                        <button
+                          key={t.id}
+                          onClick={() => setMemTheme(t.id)}
+                          className={`py-2 px-3 rounded-xl text-sm font-bold border-2 transition text-right ${memTheme === t.id ? "bg-purple-600 text-white border-purple-600" : "bg-white text-gray-600 border-gray-200 hover:border-purple-300"}`}
+                        >
+                          {t.label}<br/><span className="text-xs font-normal opacity-70">{t.desc}</span>
+                        </button>
+                      ))}
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        startGame("memory", { pairs: memPairs, theme: memTheme });
+                        setScreen("game");
+                        sendNavSync("game", "memory");
+                        setMemoryConfig(false);
+                      }}
+                      className="w-full py-3 bg-purple-600 hover:bg-purple-700 active:scale-95 text-white font-black text-lg rounded-xl shadow-lg transition"
+                    >
+                      🃏 התחל משחק!
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Other games */}
               <div className="flex gap-2 flex-wrap justify-center mb-5">
-                {GAMES.map((g) => (
+                {GAMES.filter(g => g.id !== "memory").map((g) => (
                   <div key={g.id} className="relative flex-1 min-w-[120px]">
                     <button
                       onClick={() => { startGame(g.id); setScreen("game"); sendNavSync("game", g.id); }}
@@ -363,11 +434,6 @@ export default function Home() {
                       <div className="text-sm mt-1">{g.label.split(" ").slice(1).join(" ")}</div>
                       <div className="text-xs text-gray-400 mt-0.5">{g.desc}</div>
                     </button>
-                    {effectivePlayerCount < 2 && (
-                      <div className="absolute -bottom-6 left-0 right-0 text-center text-xs text-gray-400 pointer-events-none hidden group-hover:block">
-                        ממתין לחיבור שני המשתמשים...
-                      </div>
-                    )}
                   </div>
                 ))}
               </div>
