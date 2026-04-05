@@ -41,7 +41,7 @@ const PARTICLES = [
 ];
 
 // Height of the fixed VideoCall bar
-const VIDEO_BAR_H = 160;
+const VIDEO_BAR_H = 220;
 
 export default function Home() {
   const {
@@ -129,12 +129,11 @@ export default function Home() {
   return (
     <>
       {/* ── Global VideoCall — mounted ONCE, lives for the whole session ── */}
-      {inRoom && playerId !== null && (
+      {inRoom && playerId !== null && roomCode && (
         <VideoCall
+          roomCode={roomCode}
           playerId={playerId}
           peerConnected={effectivePlayerCount >= 2}
-          sendSignal={sendSignal}
-          incomingSignal={incomingSignal}
         />
       )}
 
